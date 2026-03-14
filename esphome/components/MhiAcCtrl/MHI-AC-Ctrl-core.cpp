@@ -12,6 +12,8 @@
 #include "driver/spi_slave.h"
 #include "driver/gpio.h"
 
+//#undef LOG_LOCAL_LEVEL
+//#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
 #include "esp_log.h"
 
 #include "MHI-AC-CTRL-operation-data.h"
@@ -24,7 +26,7 @@ using namespace mhi_ac::internal;
 #define vTaskDelayMs(ms)            vTaskDelay((ms)/portTICK_PERIOD_MS)
 
 #define ESP_INTR_FLAG_DEFAULT       0                                           // default to allocating a non-shared interrupt of level 1, 2 or 3.
-#define STACK_SIZE 2048
+#define STACK_SIZE 2560
 
 gptimer_handle_t cs_timer = NULL;
 static StaticTask_t xTaskBuffer;
@@ -496,8 +498,10 @@ static void mhi_poll_task(void *arg)
         err = spi_slave_transmit(RCV_HOST, &spi_slave_trans, pdMS_TO_TICKS(10000));
         if(err) {
           if(err == ESP_ERR_TIMEOUT) {
+            frame_errors++;
             ESP_LOGE(TAG, "SPI transaction timeout. Is sclk_pin connected?");
           } else {
+            frame_errors++;
             ESP_LOGE(TAG, "get_trans_result error: %i", err);
           }
           continue;
@@ -523,6 +527,7 @@ static void mhi_poll_task(void *arg)
         // Validate SPI transaction
         err = validate_frame(mosi_frame, trans_len_bytes);
         if(err != 0) {
+          frame_errors++;
           continue;
         }
 
